@@ -3,8 +3,8 @@ resolvers ++= Seq("Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/
 // add compile dependencies on some dispatch modules
 libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % "1.8.RC1" % "test",
-  "org.slf4j" % "slf4j-simple" % "1.6.4",
-  "org.slf4j" % "slf4j-api" % "1.6.4"
+  "org.fusesource.hawtbuf" % "hawtbuf" % "1.9",
+  "com.typesafe" %% "scalalogging-slf4j" % "1.0.1"
 )
 
 organization := "org.ryknow"
