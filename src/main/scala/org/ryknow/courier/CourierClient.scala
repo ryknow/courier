@@ -2,24 +2,33 @@ package org.ryknow.courier
 
 import java.nio._
 import java.nio.channels._
+import java.nio.charset._
 import java.net._
+import org.fusesource.hawtbuf.AsciiBuffer
 
 class CourierClient(host: String, port: Int) {
   val socketChannel: SocketChannel = new SocketChannel
   val socketAddress: SocketAddress = new InetSocketAddress(host, port)
-  val byteBuffer: ByteBuffer = ByteBuffer.allocate(64 * 1024)
-  val readBB: ByteBuffer = ByteBuffer.allocate(64 * 1024)
+  val readBB: ByteBuffer = ByteBuffer.allocate(2048)
 
   def connect {
-    val connectFrame: String = "CONNECT\naccept-version:1.0,1.1,1.2\nhost:" + host + "\n\n\0"
-    val byteArray: Array[Byte] = connectFrame.toCharArray.map { c => c.asInstanceOf[Byte] }
-    
-    byteBuffer.put(byteArray)
+    val connectFrame = new StompFrame(new AsciiBuffer("CONNECT"))
+    connectFrame.addHeader(new AsciiBuffer("login", new AsciiBuffer("user"))
+    connectFrame.addHeader(new AsciiBuffer("passcode", new AsciiBuffer("password"))
+    val byteBuffer: ByteBuffer = connectFrame.toBuffer.toByteBuffer
     
     socketChannel.connect(socketAddress)
     socketChannel.write(byteBuffer)
     
-    socketChannel.read(readBB)
+    val readResult = socketChannel.read(readBB)
+    if (readResult == -1) {
+      socketChannel.close
+    } else {
+      readBB.flip
+      val byteArray: Array[Byte] = new Array[Byte](readBB.remaining)
+      readBB.get(byteArray)
+      val response: String = new String(byteArray, Charset.forName("ASCII"))
+      println(response)
   }
   
   def close {
