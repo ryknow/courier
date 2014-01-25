@@ -1,3 +1,7 @@
+import java.io.FileInputStream
+import java.security.{SecureRandom, KeyStore}
+import javax.net.ssl.{TrustManagerFactory, KeyManagerFactory, SSLContext}
+
 class CourierSSLConnectionFactory(sslIdentityJks: String, sslIdentityJksPassword: String, sslTrustedJks: String,
                                   sslTrustedJksPassword: String, uri: String) {
                            
@@ -30,7 +34,7 @@ class CourierSSLConnectionFactory(sslIdentityJks: String, sslIdentityJksPassword
       trustStoreManagerFactory.init(trustStore)
       
       val sslContext: SSLContext = SSLContext.getInstance("TLS")
-      sslContext.init(keyManagerFactory.getKeyManager, trustStoreManagerFactory.getTrustManagers, new SecureRandom)
+      sslContext.init(keyManagerFactory.getKeyManagers, trustStoreManagerFactory.getTrustManagers, new SecureRandom)
       
       sslContext
     } else SSLContext.getDefault
