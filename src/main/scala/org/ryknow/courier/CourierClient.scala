@@ -1,37 +1,39 @@
 package org.ryknow.courier
 
-import java.nio._
-import java.nio.channels._
-import java.nio.charset._
-import java.net._
-import org.fusesource.hawtbuf.AsciiBuffer
+import io.netty.bootstrap.Bootstrap
+import io.netty.channel.{ChannelFuture, ChannelInitializer, EventLoopGroup, Channel}
+import io.netty.channel.nio.NioEventLoopGroup
+import io.netty.channel.socket.nio.NioSocketChannel
+import java.net.InetSocketAddress
+import io.netty.channel.socket.SocketChannel
+import io.netty.util.CharsetUtil
+import io.netty.handler.codec.string.StringDecoder
 
 class CourierClient(host: String, port: Int) {
-  val socketChannel: SocketChannel = new SocketChannel
-  val socketAddress: SocketAddress = new InetSocketAddress(host, port)
-  val readBB: ByteBuffer = ByteBuffer.allocate(2048)
+  private val bootstrap: Bootstrap  = new Bootstrap
+  private val group: EventLoopGroup = new NioEventLoopGroup
+
+  def this(host: String) = this(host, 61613)
 
   def connect {
-    val connectFrame = new StompFrame(new AsciiBuffer("CONNECT"))
-    connectFrame.addHeader(new AsciiBuffer("login", new AsciiBuffer("user"))
-    connectFrame.addHeader(new AsciiBuffer("passcode", new AsciiBuffer("password"))
-    val byteBuffer: ByteBuffer = connectFrame.toBuffer.toByteBuffer
-    
-    socketChannel.connect(socketAddress)
-    socketChannel.write(byteBuffer)
-    
-    val readResult = socketChannel.read(readBB)
-    if (readResult == -1) {
-      socketChannel.close
-    } else {
-      readBB.flip
-      val byteArray: Array[Byte] = new Array[Byte](readBB.remaining)
-      readBB.get(byteArray)
-      val response: String = new String(byteArray, Charset.forName("ASCII"))
-      println(response)
+    try {
+      bootstrap.group(group)
+               .channel(classOf[NioSocketChannel])
+               .remoteAddress(new InetSocketAddress(host, port))
+               .handler(new ChannelInitializer[SocketChannel] {
+                 override def initChannel(ch: SocketChannel) {
+                   ch.pipeline.addLast(new StringDecoder(CharsetUtil.UTF_8))
+                              .addLast(new CourierChannelInbound)
+                 }
+               })
+
+      val future: ChannelFuture = bootstrap.connect.sync
+
+      future.channel.closeFuture.sync
+    } finally {
+      group.shutdownGracefully
+    }
   }
-  
-  def close {
-    socketChannel.close
-  }
+
+  // TODO: Implement publish and subscribe
 }
