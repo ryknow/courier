@@ -35,5 +35,11 @@ class CourierClient(host: String, port: Int) {
     }
   }
 
-  // TODO: Implement publish and subscribe
+  def publish {
+    // TODO: Implementation details
+  }
+
+  def subscribe {
+    // TODO: Implementation details
+  }
 }
