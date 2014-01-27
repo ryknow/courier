@@ -14,6 +14,7 @@ class CourierChannelInbound extends ChannelInboundHandlerAdapter {
 
   override def channelRead(ctx: ChannelHandlerContext, msg: Any) {
     // TODO: Verify that the type of frame received
+    // For some reason seems to get stuck in here and not returning out
     println(msg.asInstanceOf[String])
   }
 

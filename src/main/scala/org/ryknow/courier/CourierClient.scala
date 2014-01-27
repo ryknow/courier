@@ -33,7 +33,7 @@ class CourierClient(host: String, port: Int) {
                .remoteAddress(new InetSocketAddress(host, port))
                .handler(new ChannelInitializer[SocketChannel] {
                  override def initChannel(ch: SocketChannel) {
-                   ch.pipeline.addLast(new StringDecoder(CharsetUtil.UTF_8))
+                   ch.pipeline//.addLast(new StringDecoder(CharsetUtil.UTF_8))
                               .addLast(new CourierChannelInbound)
                  }
                })
@@ -60,9 +60,15 @@ class CourierClient(host: String, port: Int) {
                                                     "content-type"   -> "text/plain"),
                                                 body)
     val byteBuf: ByteBuf = Unpooled.buffer
-    byteBuf.writeBytes(stompFrame.toByteArray)
 
-    channel.writeAndFlush(byteBuf)
+    try {
+      byteBuf.writeBytes(stompFrame.toByteArray)
+
+      channel.writeAndFlush(byteBuf)
+    } finally {
+      byteBuf.release
+    }
+
   }
 
   /**
