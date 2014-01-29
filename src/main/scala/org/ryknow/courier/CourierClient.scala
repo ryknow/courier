@@ -26,7 +26,7 @@ class CourierClient(host: String, port: Int) {
   /**
    * Bootstraps Netty and connects to the Stomp broker
    */
-  def connect {
+  private def connect() = {
     try {
       bootstrap.group(group)
                .channel(classOf[NioSocketChannel])
@@ -38,13 +38,22 @@ class CourierClient(host: String, port: Int) {
                  }
                })
 
-      val future: ChannelFuture = bootstrap.connect.sync
-      channel = future.channel
-
-      channel.closeFuture.sync
-    } finally {
-      group.shutdownGracefully
+      channel = bootstrap.connect.sync.channel
     }
+  }
+
+  /**
+   * Sends a DISCONNECT StompFrame to the Stomp broker
+   * Closes the channel and shuts down the EventLoopGroup to close the connection to the server
+   */
+  private def disconnect {
+    val byteBuf: ByteBuf = Unpooled.buffer
+    byteBuf.writeBytes(new StompFrame("DISCONNECT", Map(), "").toByteArray)
+
+    channel.writeAndFlush(byteBuf).sync
+
+    channel.disconnect.sync
+    group.shutdownGracefully
   }
 
   /**
@@ -54,11 +63,9 @@ class CourierClient(host: String, port: Int) {
    * @param destination  Destination of the message (Queue or Topic)
    */
   def publish(body: String, destination: String) {
+    connect
     val stompFrame: StompFrame = new StompFrame("SEND",
-                                                Map("destination"    -> destination,
-                                                    "content-length" -> body.length,
-                                                    "content-type"   -> "text/plain"),
-                                                body)
+      Map("destination" -> destination, "content-length" -> body.length.toString, "content-type" -> "text/plain"), body)
     val byteBuf: ByteBuf = Unpooled.buffer
 
     try {
@@ -66,9 +73,8 @@ class CourierClient(host: String, port: Int) {
 
       channel.writeAndFlush(byteBuf)
     } finally {
-      byteBuf.release
+      disconnect
     }
-
   }
 
   /**
@@ -78,7 +84,7 @@ class CourierClient(host: String, port: Int) {
    * @param destination  Destination of the message (Queue or Topic)
    */
   def send(body: String, destination: String) {
-    publish(body,destination)
+    publish(body, destination)
   }
 
   /**
@@ -88,6 +94,7 @@ class CourierClient(host: String, port: Int) {
    * @param fn
    */
   def subscribe(destination: String, fn: ((StompFrame) => Unit)) {
+    connect
     // TODO: Implementation details
   }
 }

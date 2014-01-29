@@ -1,10 +1,10 @@
 package org.ryknow.courier
 
-class StompFrame(command: String, headers: Map[String, Any], body: String) {
+class StompFrame(val command: String, val headers: Map[String, String], val body: String) {
   private val NULL    = "\0"
   private val NEWLINE = "\n"
 
-  // TODO: Add methods for modifying the StompFrame i.e. changing the command, headers, body
+  def content: Array[Byte] = body.getBytes
 
   /**
    * Turns the StompFrame object into an array of bytes including newline and null characters
