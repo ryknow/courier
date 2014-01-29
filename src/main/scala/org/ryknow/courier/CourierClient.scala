@@ -13,7 +13,6 @@ import io.netty.buffer.{ByteBuf, Unpooled}
 class CourierClient(host: String, port: Int) {
   private val bootstrap: Bootstrap  = new Bootstrap
   private val group: EventLoopGroup = new NioEventLoopGroup
-  private var channel: Channel      = _
 
   /**
    * Constructor using the default TCP port
@@ -26,19 +25,20 @@ class CourierClient(host: String, port: Int) {
   /**
    * Bootstraps Netty and connects to the Stomp broker
    */
-  private def connect() = {
-    try {
+  private def connect(handler: ChannelInboundHandlerAdapter ) = {
+    val channel: Channel = try {
       bootstrap.group(group)
                .channel(classOf[NioSocketChannel])
                .remoteAddress(new InetSocketAddress(host, port))
                .handler(new ChannelInitializer[SocketChannel] {
                  override def initChannel(ch: SocketChannel) {
+                   // TODO: Add StompFrameDecoder to the pipeline
                    ch.pipeline//.addLast(new StringDecoder(CharsetUtil.UTF_8))
-                              .addLast(new CourierChannelInbound)
+                              .addLast(handler)
                  }
                })
 
-      channel = bootstrap.connect.sync.channel
+      bootstrap.connect.sync.channel
     }
   }
 
@@ -46,7 +46,7 @@ class CourierClient(host: String, port: Int) {
    * Sends a DISCONNECT StompFrame to the Stomp broker
    * Closes the channel and shuts down the EventLoopGroup to close the connection to the server
    */
-  private def disconnect {
+  private def disconnect(channel: Channel) {
     val byteBuf: ByteBuf = Unpooled.buffer
     byteBuf.writeBytes(new StompFrame("DISCONNECT", Map(), "").toByteArray)
 
@@ -63,7 +63,7 @@ class CourierClient(host: String, port: Int) {
    * @param destination  Destination of the message (Queue or Topic)
    */
   def publish(body: String, destination: String) {
-    connect
+    val channel: Channel = connect(new PublishHandler)
     val stompFrame: StompFrame = new StompFrame("SEND",
       Map("destination" -> destination, "content-length" -> body.length.toString, "content-type" -> "text/plain"), body)
     val byteBuf: ByteBuf = Unpooled.buffer
@@ -73,7 +73,7 @@ class CourierClient(host: String, port: Int) {
 
       channel.writeAndFlush(byteBuf)
     } finally {
-      disconnect
+      disconnect(channel)
     }
   }
 
@@ -94,7 +94,7 @@ class CourierClient(host: String, port: Int) {
    * @param fn
    */
   def subscribe(destination: String, fn: ((StompFrame) => Unit)) {
-    connect
+    val channel: Channel = connect(new SubscribeHandler)
     // TODO: Implementation details
   }
 }
